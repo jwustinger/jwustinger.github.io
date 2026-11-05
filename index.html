@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tiamats Voice – Sprache zu Text</title>
+<style>
+/* ==========================================================
+   1. FARBEN & GRUNDWERTE
+   ========================================================== */
+:root {
+  --bg:        #f2f6f7;   /* Seitenhintergrund */
+  --surface:   #ffffff;   /* Karten, Formulare */
+  --ink:       #10252b;   /* Haupttext */
+  --muted:     #44595f;   /* Hinweise */
+  --brand:     #0a5c66;   /* Buttons, Links */
+  --brand-ink: #ffffff;   /* Text auf Brand-Farbe */
+  --deep:      #0c2a33;   /* Header, Hero, Footer */
+  --deep-ink:  #eaf4f5;   /* Text auf Deep */
+  --accent:    #f0b44c;   /* Akzent (Bernstein) */
+  --line:      #b9c9cd;   /* Rahmen */
+  --err:       #a4161a;   /* Fehler */
+  --focus:     #7a3e00;   /* Fokusrahmen */
+
+  --radius: 12px;
+  --space:  1.25rem;
+
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Dunkelmodus (System oder manuell) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1a1f; --surface: #12282f; --ink: #e8f1f2; --muted: #a9bfc4;
+    --brand: #7fd3dc; --brand-ink: #05242a; --deep: #06141a;
+    --line: #34505a; --err: #ff9a9a; --focus: #ffd37a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1a1f; --surface: #12282f; --ink: #e8f1f2; --muted: #a9bfc4;
+  --brand: #7fd3dc; --brand-ink: #05242a; --deep: #06141a;
+  --line: #34505a; --err: #ff9a9a; --focus: #ffd37a;
+}
+
+/* ==========================================================
+   2. BASIS
+   ========================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 1.0625rem/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+h1, h2, h3 {
+  font-family: "Iowan Old Style", Georgia, "Times New Roman", serif;
+  line-height: 1.2;
+  margin: 0 0 .5em;
+}
+h1 { font-size: clamp(2.1rem, 6vw, 3.6rem); }
+h2 { font-size: clamp(1.6rem, 4vw, 2.2rem); }
+h3 { font-size: 1.25rem; }
+
+p { max-width: 68ch; margin: 0 0 1em; }
+
+a { color: var(--brand); text-underline-offset: .2em; }
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Bewegung reduzieren */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation: none !important; transition: none !important; }
+}
+
+/* ==========================================================
+   3. LAYOUT
+   ========================================================== */
+.wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--space);
+}
+
+section { padding: 3.5rem 0; }
+section.alt { background: var(--surface); }
+
+.grid {
+  display: grid;
+  gap: var(--space);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+}
+
+.demo {
+  display: grid;
+  gap: var(--space);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+}
+
+/* ==========================================================
+   4. KOPFZEILE, HERO, FUSSZEILE
+   ========================================================== */
+header.site { background: var(--deep); color: var(--deep-ink); }
+
+header.site .wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem 1.5rem;
+  padding-top: .75rem;
+  padding-bottom: .75rem;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 44px;
+  font: 700 1.4rem Georgia, serif;
+  color: var(--deep-ink);
+  text-decoration: none;
+}
+
+nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+nav a {
+  display: inline-block;
+  min-height: 44px;
+  padding: .6rem .25rem;
+  color: var(--deep-ink);
+}
+
+.hero {
+  background: var(--deep);
+  color: var(--deep-ink);
+  padding: 3.5rem 0 4rem;
+}
+.hero p { font-size: 1.2rem; }
+.hero .btn { background: var(--accent); border-color: var(--accent); color: #10252b; }
+.hero .btn.alt { background: transparent; color: var(--deep-ink); border-color: var(--deep-ink); }
+
+.waves {
+  display: block;
+  width: 100%;
+  height: 60px;
+  margin-top: 2rem;
+  color: #2c6f7a;
+}
+
+footer { background: var(--deep); color: var(--deep-ink); padding: 2.5rem 0; }
+footer a { color: var(--deep-ink); }
+footer .hint { color: var(--deep-ink); }
+
+/* ==========================================================
+   5. KARTEN & PREISE
+   ========================================================== */
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+.card.featured { border: 3px solid var(--brand); }
+.card ul { margin: 0 0 1.25rem; padding-left: 1.2rem; }
+.card .btn { margin-top: auto; }
+
+.price { margin: .25rem 0; font: 700 2.2rem Georgia, serif; }
+.price small { font: 400 1rem system-ui; color: var(--muted); }
+
+.tag {
+  align-self: flex-start;
+  margin-bottom: .5rem;
+  padding: .15rem .6rem;
+  border-radius: 99px;
+  background: var(--accent);
+  color: #10252b;
+  font-weight: 700;
+  font-size: .9rem;
+}
+
+/* ==========================================================
+   6. BUTTONS
+   ========================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-width: 48px;
+  min-height: 48px;
+  padding: .6rem 1.25rem;
+  border: 2px solid var(--brand);
+  border-radius: 8px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font: 600 1rem inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn:hover { filter: brightness(1.12); }
+.btn.alt { background: transparent; color: var(--brand); }
+.btn.sm { min-height: 44px; padding: .4rem .9rem; }
+.btn[disabled] { opacity: .6; cursor: not-allowed; }
+
+/* ==========================================================
+   7. FORMULARE
+   ========================================================== */
+label, legend { display: block; margin-bottom: .3rem; font-weight: 600; }
+
+input, select, textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: .6rem .8rem;
+  border: 2px solid var(--muted);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.field { margin-bottom: 1rem; }
+.hint  { margin: .25rem 0 0; color: var(--muted); font-size: .95rem; }
+.error { margin: .25rem 0 0; color: var(--err); font-weight: 600; }
+
+.check { display: flex; align-items: flex-start; gap: .6rem; }
+.check input { width: 24px; min-height: 24px; margin-top: .25rem; flex: none; }
+.check label { margin: 0; font-weight: 400; }
+
+#order { max-width: 520px; margin-top: 2rem; }
+
+/* ==========================================================
+   8. DEMO-BEREICH
+   ========================================================== */
+.notice {
+  margin-bottom: var(--space);
+  padding: 1rem 1.25rem;
+  border-left: 6px solid var(--brand);
+  border-radius: 0 8px 8px 0;
+  background: var(--bg);
+}
+
+.out {
+  min-height: 9rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 2px dashed var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  white-space: pre-wrap;
+}
+
+progress { width: 100%; height: 1rem; accent-color: var(--brand); }
+
+/* ==========================================================
+   9. WARENKORB
+   ========================================================== */
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: .7rem .5rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+td input { width: 5rem; }
+
+.cartbadge {
+  margin-left: .3rem;
+  padding: 0 .55rem;
+  border-radius: 99px;
+  background: var(--accent);
+  color: #10252b;
+  font-weight: 700;
+}
+
+/* ==========================================================
+   10. HILFSKLASSEN
+   ========================================================== */
+.skip {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  z-index: 20;
+  padding: .75rem 1rem;
+  background: var(--accent);
+  color: #10252b;
+  font-weight: 700;
+}
+.skip:focus { top: 1rem; }
+
+.vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Zum Hauptinhalt springen</a>
+
+<header class="site">
+ <div class="wrap">
+  <a class="logo" href="#top" aria-label="Tiamats Voice – Startseite">
+   <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle cx="16" cy="16" r="15" fill="none" stroke="#f0b44c" stroke-width="2"/><path d="M4 16q3-6 6 0t6 0 6 0 6 0" fill="none" stroke="#f0b44c" stroke-width="2.4" stroke-linecap="round"/></svg>
+   Tiamats Voice
+  </a>
+  <nav aria-label="Hauptnavigation">
+   <ul>
+    <li><a href="#demo">Ausprobieren</a></li>
+    <li><a href="#preise">Preise</a></li>
+    <li><a href="#warenkorb">Warenkorb<span class="cartbadge" id="badge">0<span class="vh"> Artikel</span></span></a></li>
+   </ul>
+  </nav>
+ </div>
+</header>
+
+<main id="main">
+<div class="hero" id="top">
+ <div class="wrap">
+  <h1>Aus Stimme wird Text.</h1>
+  <p>Audiodateien hochladen, live aufnehmen oder Meetings protokollieren lassen. Für Privatpersonen und Unternehmen – entwickelt in Österreich.</p>
+  <p><a class="btn" href="#demo">Kostenlos ausprobieren</a> <a class="btn alt" href="#preise">Preise ansehen</a></p>
+  <svg class="waves" viewBox="0 0 1200 60" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 30q50-30 100 0t100 0 100 0 100 0 100 0 100 0 100 0 100 0 100 0 100 0 100 0 100 0" fill="none" stroke="currentColor" stroke-width="3"/></svg>
+ </div>
+</div>
+
+<section id="funktionen" aria-labelledby="h-fn">
+ <div class="wrap">
+  <h2 id="h-fn">Was Tiamats Voice kann</h2>
+  <div class="grid">
+   <div class="card"><h3>Datei hochladen</h3><p>WAV- und MP3-Dateien hochladen und in durchsuchbaren Text umwandeln.</p></div>
+   <div class="card"><h3>Live aufnehmen</h3><p>Direkt im Browser sprechen und mitlesen, während der Text entsteht.</p></div>
+   <div class="card"><h3>Meeting-Protokolle</h3><p>Besprechungen aufzeichnen und als Protokoll mit Sprecherwechseln speichern. Ab Premium.</p></div>
+  </div>
+ </div>
+</section>
+
+<section id="demo" class="alt" aria-labelledby="h-demo">
+ <div class="wrap">
+  <h2 id="h-demo">Jetzt ausprobieren</h2>
+  <p class="notice">Dies ist eine Demo. Die Live-Aufnahme nutzt die Spracherkennung Ihres Browsers (am besten in Chrome oder Edge). Beim Datei-Upload wird in dieser Demo ein Beispieltext angezeigt, da die Server-Erkennung hier nicht angeschlossen ist.</p>
+  <div class="demo">
+   <div class="card">
+    <h3>Audiodatei umwandeln</h3>
+    <div class="field">
+     <label for="file">Audiodatei (WAV oder MP3)</label>
+     <input type="file" id="file" accept=".wav,.mp3,audio/wav,audio/mpeg" aria-describedby="file-hint file-err">
+     <p class="hint" id="file-hint">Maximal 50 MB.</p>
+     <p class="error" id="file-err" role="alert"></p>
+    </div>
+    <button class="btn" id="convert" type="button">In Text umwandeln</button>
+    <div id="prog-wrap" hidden><label for="prog">Fortschritt</label><progress id="prog" max="100" value="0"></progress></div>
+    <div class="out" id="file-out" tabindex="0" role="region" aria-label="Ergebnis der Dateiumwandlung">Der Text erscheint hier.</div>
+   </div>
+   <div class="card">
+    <h3>Live aufnehmen</h3>
+    <div class="field">
+     <label for="lang">Sprache</label>
+     <select id="lang"><option value="de-AT">Deutsch (Österreich)</option><option value="de-DE">Deutsch (Deutschland)</option><option value="en-GB">English (UK)</option></select>
+    </div>
+    <button class="btn" id="rec" type="button" aria-pressed="false">Aufnahme starten</button>
+    <p class="hint" id="rec-status" role="status" aria-live="polite">Bereit.</p>
+    <div class="out" id="live-out" tabindex="0" role="region" aria-label="Live-Transkript">Das Transkript erscheint hier.</div>
+    <p><button class="btn alt sm" id="copy" type="button">Text kopieren</button></p>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section id="preise" aria-labelledby="h-pr">
+ <div class="wrap">
+  <h2 id="h-pr">Preise</h2>
+  <p>Für Privatpersonen sind Umwandeln und Aufnehmen kostenlos. Unternehmen erhalten alle Funktionen in der Business-Version. Alle Preise inkl. USt. (Beispielpreise).</p>
+  <div class="grid">
+   <article class="card" aria-labelledby="p1">
+    <h3 id="p1">Privat Free</h3>
+    <p class="price">0 €<small> / Monat</small></p>
+    <ul><li>Dateien hochladen (WAV, MP3)</li><li>Live-Aufnahme</li><li>Keine Meeting-Protokolle</li></ul>
+    <a class="btn alt" href="#demo">Kostenlos starten</a>
+   </article>
+   <article class="card featured" aria-labelledby="p2">
+    <span class="tag">Für Privatpersonen</span>
+    <h3 id="p2">Privat Premium</h3>
+    <p class="price">9 €<small> / Monat</small></p>
+    <ul><li>Alles aus Free</li><li>Meeting-Protokolle</li><li>Export als TXT und DOCX</li></ul>
+    <button class="btn add" type="button" data-id="premium" data-name="Privat Premium" data-price="9">In den Warenkorb<span class="vh">: Privat Premium</span></button>
+   </article>
+   <article class="card" aria-labelledby="p3">
+    <span class="tag">Für Unternehmen</span>
+    <h3 id="p3">Business</h3>
+    <p class="price">29 €<small> / Nutzer / Monat</small></p>
+    <ul><li>Alle Funktionen</li><li>Meeting-Protokolle im Team</li><li>Rechnung und Support</li></ul>
+    <button class="btn add" type="button" data-id="business" data-name="Business" data-price="29">In den Warenkorb<span class="vh">: Business</span></button>
+   </article>
+  </div>
+ </div>
+</section>
+
+<section id="warenkorb" class="alt" aria-labelledby="h-cart">
+ <div class="wrap">
+  <h2 id="h-cart">Warenkorb und Bestellung</h2>
+  <p class="hint" id="cart-status" role="status" aria-live="polite"></p>
+  <div id="cart-empty"><p>Ihr Warenkorb ist leer. Wählen Sie oben einen Tarif.</p></div>
+  <div id="cart-full" hidden>
+   <table>
+    <caption class="vh">Artikel im Warenkorb</caption>
+    <thead><tr><th scope="col">Tarif</th><th scope="col">Anzahl</th><th scope="col">Preis / Monat</th><th scope="col"><span class="vh">Aktion</span></th></tr></thead>
+    <tbody id="cart-body"></tbody>
+    <tfoot><tr><th scope="row" colspan="2">Summe pro Monat</th><td id="total" colspan="2"></td></tr></tfoot>
+   </table>
+   <form id="order" novalidate aria-labelledby="h-order">
+    <h3 id="h-order">Ihre Daten</h3>
+    <div class="field"><label for="o-name">Vor- und Nachname</label><input id="o-name" name="name" autocomplete="name" required aria-describedby="e-name"><p class="error" id="e-name"></p></div>
+    <div class="field"><label for="o-mail">E-Mail-Adresse</label><input id="o-mail" name="email" type="email" autocomplete="email" required aria-describedby="e-mail"><p class="error" id="e-mail"></p></div>
+    <div class="field"><label for="o-firma">Firma (nur für Business)</label><input id="o-firma" name="org" autocomplete="organization"></div>
+    <div class="field"><div class="check"><input type="checkbox" id="o-agb" aria-describedby="e-agb"><label for="o-agb">Ich akzeptiere die AGB und die Datenschutzerklärung.</label></div><p class="error" id="e-agb"></p></div>
+    <button class="btn" type="submit">Zahlungspflichtig bestellen</button>
+   </form>
+  </div>
+ </div>
+</section>
+
+</main>
+
+<footer>
+ <div class="wrap">
+  <p><strong>Tiamats Voice</strong> · Österreich</p>
+  <p><a href="#top">Impressum</a> · <a href="#top">Datenschutz</a> · <a href="#top">AGB</a></p>
+  <p class="hint">Beispiel-Webshop. Bestellungen werden nicht verarbeitet.</p>
+ </div>
+</footer>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const cart=[];
+const fmt=n=>n.toLocaleString('de-AT',{style:'currency',currency:'EUR'});
+
+/* Warenkorb */
+function render(){
+  const body=$('#cart-body');body.textContent='';
+  let total=0,count=0;
+  cart.forEach((it,i)=>{
+    total+=it.price*it.qty;count+=it.qty;
+    const tr=document.createElement('tr');
+    tr.innerHTML='<th scope="row"></th><td><label class="vh" for="q'+i+'">Anzahl</label><input type="number" min="1" max="500" id="q'+i+'"></td><td></td><td><button type="button" class="btn alt sm">Entfernen</button></td>';
+    tr.querySelector('th').textContent=it.name;
+    const q=tr.querySelector('input');q.value=it.qty;
+    q.addEventListener('change',()=>{it.qty=Math.max(1,Math.min(500,parseInt(q.value)||1));render();});
+    tr.children[2].textContent=fmt(it.price*it.qty);
+    const b=tr.querySelector('button');
+    b.setAttribute('aria-label',it.name+' entfernen');
+    b.addEventListener('click',()=>{cart.splice(i,1);render();$('#cart-status').textContent=it.name+' wurde entfernt.';$('#warenkorb').scrollIntoView();});
+    body.appendChild(tr);
+  });
+  $('#total').textContent=fmt(total);
+  $('#badge').firstChild.nodeValue=count;
+  $('#cart-empty').hidden=cart.length>0;
+  $('#cart-full').hidden=cart.length===0;
+}
+document.querySelectorAll('.add').forEach(b=>b.addEventListener('click',()=>{
+  const d=b.dataset;const ex=cart.find(c=>c.id===d.id);
+  if(ex)ex.qty++;else cart.push({id:d.id,name:d.name,price:+d.price,qty:1});
+  render();$('#cart-status').textContent=d.name+' wurde in den Warenkorb gelegt.';
+}));
+$('#order').addEventListener('submit',e=>{
+  e.preventDefault();
+  const n=$('#o-name'),m=$('#o-mail'),a=$('#o-agb');let first=null;
+  const set=(el,err,msg)=>{$(err).textContent=msg;el.setAttribute('aria-invalid',msg?'true':'false');if(msg&&!first)first=el;};
+  set(n,'#e-name',n.value.trim()?'':'Bitte geben Sie Ihren Namen ein.');
+  set(m,'#e-mail',/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m.value)?'':'Bitte geben Sie eine gültige E-Mail-Adresse ein, z. B. name@beispiel.at.');
+  set(a,'#e-agb',a.checked?'':'Bitte akzeptieren Sie die AGB, um fortzufahren.');
+  if(first){first.focus();return;}
+  cart.length=0;render();e.target.reset();
+  const s=$('#cart-status');s.textContent='Danke! Ihre Bestellung (Demo) wurde aufgenommen. Eine Bestätigung geht an '+m.value+'.';
+});
+
+/* Datei-Demo */
+const demoText='Willkommen zur Demo von Tiamats Voice. Dies ist ein Beispieltext: In der Vollversion erscheint hier das Transkript Ihrer Audiodatei, inklusive Satzzeichen und Zeitmarken.';
+$('#convert').addEventListener('click',()=>{
+  const f=$('#file').files[0],err=$('#file-err');err.textContent='';
+  if(!f){err.textContent='Bitte wählen Sie zuerst eine WAV- oder MP3-Datei aus.';$('#file').focus();return;}
+  if(!/\.(wav|mp3)$/i.test(f.name)){err.textContent='Dieses Format wird nicht unterstützt. Erlaubt sind WAV und MP3.';$('#file').focus();return;}
+  if(f.size>50*1048576){err.textContent='Die Datei ist größer als 50 MB.';$('#file').focus();return;}
+  const out=$('#file-out'),p=$('#prog'),btn=$('#convert');
+  $('#prog-wrap').hidden=false;btn.disabled=true;p.value=0;out.textContent='Wird umgewandelt …';
+  let v=0;const t=setInterval(()=>{v+=10;p.value=v;if(v>=100){clearInterval(t);btn.disabled=false;out.textContent='Datei: '+f.name+'\n\n'+demoText;out.focus();}},250);
+});
+
+/* Live-Aufnahme */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,on=false,finalText='';
+const btn=$('#rec'),st=$('#rec-status'),lo=$('#live-out');
+btn.addEventListener('click',()=>{
+  if(!SR){st.textContent='Ihr Browser unterstützt keine Spracherkennung. Bitte verwenden Sie Chrome oder Edge.';return;}
+  if(on){rec.stop();return;}
+  rec=new SR();rec.lang=$('#lang').value;rec.continuous=true;rec.interimResults=true;finalText='';
+  rec.onstart=()=>{on=true;btn.textContent='Aufnahme beenden';btn.setAttribute('aria-pressed','true');st.textContent='Aufnahme läuft. Bitte sprechen Sie.';lo.textContent='';};
+  rec.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)finalText+=r[0].transcript+' ';else interim+=r[0].transcript;}lo.textContent=finalText+interim;};
+  rec.onerror=e=>{st.textContent=e.error==='not-allowed'?'Zugriff auf das Mikrofon wurde verweigert. Bitte erlauben Sie ihn in den Browser-Einstellungen.':'Fehler bei der Aufnahme: '+e.error;};
+  rec.onend=()=>{on=false;btn.textContent='Aufnahme starten';btn.setAttribute('aria-pressed','false');if(!st.textContent.startsWith('Zugriff')&&!st.textContent.startsWith('Fehler'))st.textContent='Aufnahme beendet.';if(!finalText&&!lo.textContent)lo.textContent='Das Transkript erscheint hier.';};
+  try{rec.start();}catch(x){st.textContent='Aufnahme konnte nicht gestartet werden.';}
+});
+$('#copy').addEventListener('click',async()=>{
+  const t=lo.textContent;if(!finalText&&!t.trim()){st.textContent='Es gibt noch keinen Text zum Kopieren.';return;}
+  try{await navigator.clipboard.writeText(t);st.textContent='Text kopiert.';}catch(x){st.textContent='Kopieren nicht möglich. Bitte markieren Sie den Text manuell.';}
+});
+render();
+})();
+</script>
+</body>
+</html>
